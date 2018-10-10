@@ -1,0 +1,41 @@
+import scrapy
+from bs4 import BeautifulSoup
+import urllib
+
+
+array_Links =[]
+
+#resp = urllib.urlopen("https://github.com/wialon/python-wialon/issues/8")
+
+resp = urllib.urlopen("https://github.com/search?q=sumit&type=Users")
+soup = BeautifulSoup(resp,"lxml", from_encoding=resp.info().get('charset'))
+
+for link in soup.find_all('a', href=True):
+    array_Links.append(link['href'])
+    for i in array_Links:
+        if i == "javascript:void(0)":
+            array_Links.remove(i)
+    print(array_Links)
+
+
+
+class QuotesSpider(scrapy.Spider):
+    name = "quotes"
+    start_urls = [
+         'http://quotes.toscrape.com/page/1/',
+         'http://quotes.toscrape.com/page/2/',
+     ]
+    #start_urls = array_Links
+
+    def parse(self, response):
+        for quote in response.css('div.quote'):
+            yield {
+                'text': quote.css('span.text::text').extract_first(),
+                'author': quote.css('small.author::text').extract_first(),
+                'tags': quote.css('div.tags a.tag::text').extract(),
+            }
+        for links in array_Links:
+            next_page = links
+            if next_page is not None:
+                next_page = response.urljoin(next_page)
+                yield scrapy.Request(next_page, callback=self.parse)
